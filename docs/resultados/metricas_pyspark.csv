@@ -1,0 +1,7 @@
+,mejores_params,AUC_cv,Accuracy,Precision,Recall,F1,ROC_AUC,t_entrenamiento_s,t_prediccion_s,t_transferencia_s
+GradientBoosting,"{'maxIter': 100, 'maxDepth': 5}",0.7173,0.8035,0.5533,0.0817,0.1424,0.7181,10435.48,28.32,1.97
+LogisticRegression,{'regParam': 0.0001},0.7112,0.8021,0.5273,0.084,0.1449,0.7113,328.1,24.86,1.72
+RandomForest,"{'numTrees': 100, 'maxDepth': 10}",0.7065,0.8013,0.655,0.0098,0.0192,0.7051,2051.15,39.17,4.32
+DecisionTree,{'maxDepth': 10},0.6998,0.8009,0.5105,0.0665,0.1177,0.6997,222.8,4.07,1.91
+LinearSVC,{'regParam': 1e-06},0.6511,0.8004,0.0,0.0,0.0,0.6675,900.64,25.83,1.61
+GaussianNB,{},0.6596,0.6961,0.3223,0.4738,0.3837,0.6589,87.38,24.03,1.98

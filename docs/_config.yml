@@ -1,14 +1,18 @@
 # Book settings
 # Learn more at https://jupyterbook.org/customize/config.html
 
-title: My sample book
-author: The Jupyter Book Community
+title: Proyecto Integrador — Lending Club
+author: Jaime Andres Besada, Ivan Prada
 logo: logo.png
 
-# Force re-execution of notebooks on each build.
+# El notebook NO se re-ejecuta al construir el libro: se usan las salidas guardadas.
+# (Una ejecución completa tarda ~6 horas y requiere los CSV originales de ~1.7 GB, que no están en el repositorio.)
 # See https://jupyterbook.org/content/execute.html
 execute:
-  execute_notebooks: force
+  execute_notebooks: 'off'
+
+# Solo se construyen los archivos listados en _toc.yml
+only_build_toc_files: true
 
 # Define the name of the latex output file for PDF builds
 latex:
@@ -21,9 +25,9 @@ bibtex_bibfiles:
 
 # Information about where the book exists on the web
 repository:
-  url: https://github.com/executablebooks/jupyter-book  # Online location of your book
+  url: https://github.com/BESADAJ/jbook_ml202330  # Online location of your book
   path_to_book: docs  # Optional path to your book, relative to the repository root
-  branch: master  # Which branch of the repository should be used when creating links (optional)
+  branch: main  # Which branch of the repository should be used when creating links (optional)
 
 # Add GitHub buttons to your book
 # See https://jupyterbook.org/customize/config.html#add-a-link-to-your-repository
