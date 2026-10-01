@@ -149,14 +149,8 @@
   
   
   
-    
-    
-      
-    
-    
-    <img src="_static/logo.png" class="logo__image only-light" alt="Tarea 1 — Evaluación de modelos ML - Home"/>
-    <script>document.write(`<img src="_static/logo.png" class="logo__image only-dark" alt="Tarea 1 — Evaluación de modelos ML - Home"/>`);</script>
   
+    <p class="title logo__title">Tarea 1 — Evaluación de modelos ML</p>
   
 </a></div>
         <div class="sidebar-primary-item">
@@ -15941,9 +15935,9 @@ Falso positivo (id 55961482): P(default) = 0.815 | umbral = 0.220 | 0.1 s
 <li><p><strong>Modo local:</strong> Spark no tiene más núcleos ni más memoria que scikit-learn. Además paga por planificar tareas en cada iteración, serializar datos entre la JVM y Python y representar filas y nodos de árboles como objetos Java.</p></li>
 <li><p><strong>Configuración de Spark:</strong> con las 400 particiones del enunciado, el entrenamiento fue de 3 a 6 veces más lento que con 48, porque cada partición quedaba con muy pocas filas.</p></li>
 </ul>
-<p>en conclusion, la rapidez esperada de pyspark no se logro encontrar, sin embargo esto no se debe directamente a la potencia de pyspark sino por su configuracion y que la maquina donde se opero no permitio que este fuese utilizado a su maximo potencial. sin embargo probablemente esto no de problemas en un diferente entorno mas adaptado a Pyspark
-<strong>2. ¿Cuál fue más preciso?</strong></p>
-<p>Ninguno de forma clara. El mejor modelo en ambos entornos fue <strong>gradient boosting</strong> (AUC 0.7187 en scikit-learn y 0.7181 en PySpark), con una diferencia estadísticamente significativa pero sin relevancia práctica. La regresión logística y Naive Bayes dieron prácticamente lo mismo.</p>
+<p>En conclusión, la rapidez esperada de PySpark no se logró encontrar. Sin embargo, esto no se debe directamente a la potencia de PySpark, sino a su configuración y a que la máquina donde se operó no permitió que este fuese utilizado a su máximo potencial. Probablemente esto no dé problemas en un entorno diferente, más adaptado a PySpark.</p>
+<p><strong>2. ¿Cuál fue más preciso?</strong></p>
+<p>Ninguno de forma clara. El mejor modelo en ambos entornos fue <strong>gradient boosting</strong> (AUC 0.7187 en scikit-learn y 0.7181 en PySpark), con una diferencia sin relevancia. La regresión logística y Naive Bayes dieron prácticamente lo mismo.</p>
 <p>scikit-learn fue mejor en RandomForest, porque Spark usó un grid reducido. PySpark fue mejor en LinearSVC, porque en scikit-learn ese modelo colapsa. Con el mismo algoritmo y los mismos hiperparámetros, los dos entornos producen modelos equivalentes.</p>
 <p><strong>3. ¿Qué diferencias de AUC fueron significativas tras la corrección de Holm y cuáles son relevantes en la práctica?</strong></p>
 <p>Con 269 mil observaciones de prueba casi todo es significativo, así que la relevancia se juzgó con el margen |ΔAUC| ≥ 0.005.</p>
@@ -15961,7 +15955,7 @@ Falso positivo (id 55961482): P(default) = 0.815 | umbral = 0.220 | 0.1 s
 <p><strong>4. ¿Qué diferencias de implementación explican las discrepancias?</strong></p>
 <ul class="simple">
 <li><p><strong>Discretización:</strong> los árboles de Spark usan <code class="docutils literal notranslate"><span class="pre">maxBins=32</span></code> en lugar de cortes exactos. Esto explica la ligera desventaja del árbol de decisión (0.003).</p></li>
-<li><p><strong>Grid reducido de RandomForest en Spark:</strong> sin 50 × 15 ni 100 × 15 (ver punto 8). Es la causa principal de su diferencia.</p></li>
+<li><p><strong>Grid reducido de RandomForest en Spark:</strong> sin 50 × 15 ni 100 × 15 (ver punto 8). Es la causa principal de su diferencia. Esto fue debido a que la computadora no pudo aguantar el procesamiento en PySpark.</p></li>
 <li><p><strong>LinearSVC:</strong> con pérdida hinge, 80 % de negativos y clases muy solapadas, el óptimo de liblinear es la solución trivial <span class="math notranslate nohighlight">\(w \approx 0\)</span>. Spark no regulariza el intercepto, estandariza internamente las variables y se detiene a las 100 iteraciones, así que sí aprende (AUC 0.668).</p></li>
 <li><p><strong>Regularización:</strong> la equivalencia <span class="math notranslate nohighlight">\(C = 1/(\text{regParam} \cdot n)\)</span> es aproximada, pero con un millón de filas la regularización casi no influye (los tres valores dan el mismo AUC).</p></li>
 <li><p><strong>Detalles menores:</strong> Spark calcula las medianas de imputación de forma aproximada, y sus pliegues de validación cruzada no son los mismos que los de scikit-learn.</p></li>
