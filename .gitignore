@@ -1,5 +1,12 @@
-﻿docs/_build/
+docs/_build/
 
 # Datos y PDFs pesados (no se suben a GitHub)
 docs/*.csv
 docs/*.pdf
+
+# Archivos temporales
+.ipynb_checkpoints/
+__pycache__/
+spark-warehouse/
+metastore_db/
+derby.log
