@@ -1,4 +1,6 @@
-# Proyecto Integrador de Aprendizaje Automático — Lending Club
+# Tarea 1 — Evaluación de modelos ML
+
+*Proyecto integrador de aprendizaje automático: Lending Club*
 
 **Integrantes:** Jaime Andres Besada, Ivan Prada
 
