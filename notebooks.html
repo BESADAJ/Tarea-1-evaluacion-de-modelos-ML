@@ -442,6 +442,8 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#comparacion-de-resultados">9.10.4.8. Comparación de Resultados</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reflexion-critica">9.10.5. Reflexión crítica</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#referencias">Referencias</a></li>
 </ul>
 </li>
 </ul>
@@ -15902,6 +15904,146 @@ Falso positivo (id 55961482): P(default) = 0.815 | umbral = 0.220 | 0.1 s
 </div>
 </section>
 </section>
+<section id="reflexion-critica">
+<h2>9.10.5. Reflexión crítica<a class="headerlink" href="#reflexion-critica" title="Link to this heading">#</a></h2>
+<p><strong>1. ¿Qué entorno fue más rápido y por qué?</strong></p>
+<p><strong>scikit-learn</strong>, en todas las etapas salvo la lectura del CSV:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Etapa</p></th>
+<th class="head"><p>scikit-learn</p></th>
+<th class="head"><p>PySpark</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Lectura del CSV</p></td>
+<td><p>44 s</p></td>
+<td><p><strong>16.5 s</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p>Preprocesamiento completo</p></td>
+<td><p><strong>56 s</strong></p></td>
+<td><p>240 s</p></td>
+</tr>
+<tr class="row-even"><td><p>Entrenamiento de los 6 modelos (CV + ajuste final)</p></td>
+<td><p><strong>2.0 h</strong></p></td>
+<td><p>3.9 h</p></td>
+</tr>
+<tr class="row-odd"><td><p>Predicción</p></td>
+<td><p><strong>14 s</strong></p></td>
+<td><p>146 s</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Las razones:</p>
+<ul class="simple">
+<li><p><strong>Tamaño del dataset:</strong> 1.3 millones de filas y 62 variables ocupan solo 255 MB. Caben de sobra en la memoria de un solo equipo, donde NumPy opera sin costos de coordinación.</p></li>
+<li><p><strong>Modo local:</strong> Spark no tiene más núcleos ni más memoria que scikit-learn. Además paga por planificar tareas en cada iteración, serializar datos entre la JVM y Python y representar filas y nodos de árboles como objetos Java.</p></li>
+<li><p><strong>Configuración de Spark:</strong> con las 400 particiones del enunciado, el entrenamiento fue de 3 a 6 veces más lento que con 48, porque cada partición quedaba con muy pocas filas.</p></li>
+</ul>
+<p>en conclusion, la rapidez esperada de pyspark no se logro encontrar, sin embargo esto no se debe directamente a la potencia de pyspark sino por su configuracion y que la maquina donde se opero no permitio que este fuese utilizado a su maximo potencial. sin embargo probablemente esto no de problemas en un diferente entorno mas adaptado a Pyspark
+<strong>2. ¿Cuál fue más preciso?</strong></p>
+<p>Ninguno de forma clara. El mejor modelo en ambos entornos fue <strong>gradient boosting</strong> (AUC 0.7187 en scikit-learn y 0.7181 en PySpark), con una diferencia estadísticamente significativa pero sin relevancia práctica. La regresión logística y Naive Bayes dieron prácticamente lo mismo.</p>
+<p>scikit-learn fue mejor en RandomForest, porque Spark usó un grid reducido. PySpark fue mejor en LinearSVC, porque en scikit-learn ese modelo colapsa. Con el mismo algoritmo y los mismos hiperparámetros, los dos entornos producen modelos equivalentes.</p>
+<p><strong>3. ¿Qué diferencias de AUC fueron significativas tras la corrección de Holm y cuáles son relevantes en la práctica?</strong></p>
+<p>Con 269 mil observaciones de prueba casi todo es significativo, así que la relevancia se juzgó con el margen |ΔAUC| ≥ 0.005.</p>
+<ul class="simple">
+<li><p><strong>Entre entornos:</strong></p>
+<ul>
+<li><p>LogisticRegression no es significativa.</p></li>
+<li><p>GradientBoosting (0.0006), DecisionTree (0.0032) y GaussianNB (0.0002) son significativas pero <strong>no relevantes</strong>.</p></li>
+<li><p>RandomForest (0.0099) y LinearSVC (0.198) son <strong>relevantes</strong>.</p></li>
+</ul>
+</li>
+<li><p><strong>Entre modelos, en scikit-learn:</strong> los 15 pares son significativos, pero no todos relevantes. GradientBoosting y RandomForest son equivalentes en la práctica (0.0038), igual que RandomForest y la regresión logística (0.0036). GradientBoosting sí supera de forma relevante a la regresión logística (0.0074).</p></li>
+<li><p><strong>Entre modelos, en PySpark:</strong> todas las diferencias son relevantes. GradientBoosting supera a la regresión logística por 0.0068.</p></li>
+</ul>
+<p><strong>4. ¿Qué diferencias de implementación explican las discrepancias?</strong></p>
+<ul class="simple">
+<li><p><strong>Discretización:</strong> los árboles de Spark usan <code class="docutils literal notranslate"><span class="pre">maxBins=32</span></code> en lugar de cortes exactos. Esto explica la ligera desventaja del árbol de decisión (0.003).</p></li>
+<li><p><strong>Grid reducido de RandomForest en Spark:</strong> sin 50 × 15 ni 100 × 15 (ver punto 8). Es la causa principal de su diferencia.</p></li>
+<li><p><strong>LinearSVC:</strong> con pérdida hinge, 80 % de negativos y clases muy solapadas, el óptimo de liblinear es la solución trivial <span class="math notranslate nohighlight">\(w \approx 0\)</span>. Spark no regulariza el intercepto, estandariza internamente las variables y se detiene a las 100 iteraciones, así que sí aprende (AUC 0.668).</p></li>
+<li><p><strong>Regularización:</strong> la equivalencia <span class="math notranslate nohighlight">\(C = 1/(\text{regParam} \cdot n)\)</span> es aproximada, pero con un millón de filas la regularización casi no influye (los tres valores dan el mismo AUC).</p></li>
+<li><p><strong>Detalles menores:</strong> Spark calcula las medianas de imputación de forma aproximada, y sus pliegues de validación cruzada no son los mismos que los de scikit-learn.</p></li>
+</ul>
+<p><strong>5. Limitaciones de DeLong y aporte de McNemar y el bootstrap. ¿Coinciden?</strong></p>
+<p>DeLong tiene tres limitaciones en este diseño:</p>
+<ul class="simple">
+<li><p>solo mide la variabilidad del <strong>conjunto de prueba</strong>, no la del entrenamiento (semillas, pliegues, aleatoriedad del bosque);</p></li>
+<li><p>supone <strong>observaciones independientes</strong>;</p></li>
+<li><p>evalúa el AUC en <strong>todos los umbrales</strong>, no en el umbral que se usaría para decidir.</p></li>
+</ul>
+<p>Las pruebas complementarias cubren esos huecos:</p>
+<ul class="simple">
+<li><p><strong>McNemar</strong> compara decisiones con un umbral fijo. Detectó diferencias hasta en modelos casi idénticos, por umbrales que diferían en milésimas, y <strong>trata todos los errores por igual</strong>. Por eso, en scikit-learn, favoreció al RandomForest sobre GradientBoosting: su umbral más alto predice menos defaults y acierta más con la clase mayoritaria, aunque tenga peor F1.</p></li>
+<li><p><strong>El bootstrap pareado</strong> coincidió con DeLong en el AUC en <strong>las 8 comparaciones</strong>, con intervalos prácticamente iguales, lo que confirma que la aproximación asintótica de DeLong es precisa con este <span class="math notranslate nohighlight">\(n\)</span>. Además, mostró que en F1 no hay diferencia entre entornos para GradientBoosting ni para la regresión logística.</p></li>
+</ul>
+<p>Las tres pruebas coinciden en las diferencias grandes y discrepan en las pequeñas, porque miden cosas distintas.</p>
+<p><strong>6. ¿A partir de qué volumen de datos PySpark supera a scikit-learn?</strong></p>
+<p>Con 1.3 millones de filas scikit-learn sigue siendo más rápido en todos los modelos, así que en este equipo el punto de cruce está <strong>por encima de este volumen</strong>. En modo local, en un solo equipo, es posible que no exista: Spark no dispone de más memoria que scikit-learn y además usa más memoria por objeto.</p>
+<p>La ventaja de Spark aparece cuando los datos <strong>no caben en la memoria de un equipo</strong>, porque entonces scikit-learn simplemente no puede cargarlos, o cuando hay un <strong>clúster</strong> que suma memoria y núcleos. La única etapa en la que Spark ya fue más rápido es la lectura del CSV (2.7 veces), lo que sugiere que en tareas de entrada/salida y preprocesamiento masivo la ventaja llega antes.</p>
+<p><strong>7. ¿Qué aporta LIME y cuáles son sus limitaciones en entornos distribuidos?</strong></p>
+<p><strong>Lo que aporta:</strong> explica predicciones individuales. En los dos préstamos mal clasificados mostró que los modelos de ambos entornos se apoyan en las mismas variables, con los mismos signos:</p>
+<ul class="simple">
+<li><p>tasa de interés, plazo, antigüedad laboral reportada, propósito del préstamo y FICO;</p></li>
+<li><p>estas variables coinciden con las que el EDA señaló como más asociadas al default;</p></li>
+<li><p>el falso negativo tenía un perfil de bajo riesgo (tasa ≤ 9.75 %, 36 meses, FICO &gt; 714), así que su default depende de información que no está en los datos.</p></li>
+</ul>
+<p><strong>Limitaciones generales:</strong></p>
+<ul class="simple">
+<li><p>el modelo lineal local explica solo la mitad del comportamiento local del modelo (R² de 0.45 a 0.53);</p></li>
+<li><p>en predicciones extremas subestima la probabilidad (predijo 0.34 cuando el modelo daba 0.82);</p></li>
+<li><p>las explicaciones dependen de la semilla y del muestreo de las perturbaciones.</p></li>
+</ul>
+<p><strong>Limitaciones en entornos distribuidos:</strong> LIME trabaja en memoria local, así que:</p>
+<ul class="simple">
+<li><p>hubo que traer una <strong>muestra del 2 %</strong> del entrenamiento al <em>driver</em>;</p></li>
+<li><p>las 5 000 perturbaciones tuvieron que pasar por un <strong>CSV intermedio</strong> para volver a Spark;</p></li>
+<li><p>cada explicación tardó unas <strong>20 veces más</strong> que en scikit-learn.</p></li>
+</ul>
+<p><strong>8. ¿Qué efecto tuvo cada condición obligatoria en el rendimiento?</strong></p>
+<ul class="simple">
+<li><p><strong>Dataset completo, sin muestreo:</strong> fue la condición más exigente para el hardware.</p>
+<ul>
+<li><p>scikit-learn: obligó a usar <code class="docutils literal notranslate"><span class="pre">n_jobs=4</span></code> en lugar de <code class="docutils literal notranslate"><span class="pre">-1</span></code>; con 12 procesos se agotó la RAM.</p></li>
+<li><p>Spark: obligó a trabajar con 4 GB de heap y <code class="docutils literal notranslate"><span class="pre">maxMemoryInMB=32</span></code>, porque sin ese ajuste los bosques agotaban la memoria de la JVM.</p></li>
+</ul>
+</li>
+<li><p><strong>Partición común guardada en archivo:</strong> hizo posibles las pruebas pareadas. En Spark, el <em>join</em> con la partición dejó todos los datos en una sola partición, y hubo que reparticionar para no entrenar con un solo núcleo.</p></li>
+<li><p><strong>Prohibición de <code class="docutils literal notranslate"><span class="pre">.toPandas()</span></code> y <code class="docutils literal notranslate"><span class="pre">.collect()</span></code>:</strong> obligó a calcular en Spark, mediante agregaciones, la matriz de confusión, los umbrales y las categorías raras. También limitó LIME a una muestra.</p></li>
+<li><p><strong>Caché obligatorio:</strong> fue esencial para la velocidad de los modelos iterativos, pero lo que se derramó a disco llegó a <strong>llenar el disco <code class="docutils literal notranslate"><span class="pre">C:</span></code></strong> cuando se cayó una sesión. Hubo que mover los temporales de Spark a otro disco.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">CrossValidator</span></code> + <code class="docutils literal notranslate"><span class="pre">ParamGridBuilder</span></code> sin bucles:</strong> garantizó el mismo procedimiento que scikit-learn, pero ejecuta las combinaciones en serie.</p></li>
+<li><p><strong>Configuración de Spark del enunciado:</strong></p>
+<ul>
+<li><p>8 GB de memoria no eran posibles con 7.7 GB de RAM;</p></li>
+<li><p>las 400 particiones resultaron más lentas que 48 para este tamaño de datos;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">memory.fraction</span></code> se bajó a 0.6 para dejar espacio a los modelos.</p></li>
+</ul>
+</li>
+</ul>
+<p><strong>Conclusión: capacidad de cómputo insuficiente.</strong></p>
+<p>Buena parte de las decisiones de este proyecto se deben a los límites de un solo equipo con 7.7 GB de RAM, más que a los métodos:</p>
+<ul class="simple">
+<li><p>la exclusión de RandomForest 50 × 15 y 100 × 15 en Spark, que habrían tomado unas 6 horas adicionales;</p></li>
+<li><p>la reducción de paralelismo;</p></li>
+<li><p>los ajustes de memoria.</p></li>
+</ul>
+<p>El proyecto completo necesitó unas <strong>6 horas de cómputo</strong> para una sola ejecución. Con más memoria o con un clúster, el grid de Spark podría completarse y la comparación de tiempos sería más favorable para PySpark. Con los recursos disponibles, <strong>scikit-learn fue la herramienta más adecuada para este tamaño de datos</strong>, y PySpark ofreció la misma precisión a un costo de tiempo mayor.</p>
+</section>
+<section id="referencias">
+<h2>Referencias<a class="headerlink" href="#referencias" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>DeLong, E. R., DeLong, D. M. y Clarke-Pearson, D. L. (1988). Comparing the areas under two or more correlated receiver operating characteristic curves: a nonparametric approach. <em>Biometrics</em>, 44(3), 837-845.</p></li>
+<li><p>Sun, X. y Xu, W. (2014). Fast implementation of DeLong’s algorithm for comparing the areas under correlated receiver operating characteristic curves. <em>IEEE Signal Processing Letters</em>, 21(11), 1389-1393.</p></li>
+<li><p>Holm, S. (1979). A simple sequentially rejective multiple test procedure. <em>Scandinavian Journal of Statistics</em>, 6(2), 65-70.</p></li>
+<li><p>McNemar, Q. (1947). Note on the sampling error of the difference between correlated proportions or percentages. <em>Psychometrika</em>, 12(2), 153-157.</p></li>
+<li><p>Dietterich, T. G. (1998). Approximate statistical tests for comparing supervised classification learning algorithms. <em>Neural Computation</em>, 10(7), 1895-1923.</p></li>
+<li><p>Ribeiro, M. T., Singh, S. y Guestrin, C. (2016). “Why should I trust you?”: Explaining the predictions of any classifier. <em>Proceedings of the 22nd ACM SIGKDD</em>, 1135-1144.</p></li>
+<li><p>Documentación de scikit-learn: <a class="reference external" href="https://scikit-learn.org/stable/">https://scikit-learn.org/stable/</a></p></li>
+<li><p>Documentación de Apache Spark MLlib: <a class="reference external" href="https://spark.apache.org/docs/latest/ml-guide.html">https://spark.apache.org/docs/latest/ml-guide.html</a></p></li>
+<li><p>Rubio, L. <em>Machine Learning</em>, capítulo 9: Evaluación de modelos. <a class="reference external" href="https://lihkir.github.io/MachineLearning/model_evaluation.html">https://lihkir.github.io/MachineLearning/model_evaluation.html</a></p></li>
+</ul>
+</section>
 </section>
 
     <script type="text/x-thebe-config">
@@ -16023,6 +16165,8 @@ Falso positivo (id 55961482): P(default) = 0.815 | umbral = 0.220 | 0.1 s
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#comparacion-de-resultados">9.10.4.8. Comparación de Resultados</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reflexion-critica">9.10.5. Reflexión crítica</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#referencias">Referencias</a></li>
 </ul>
 </li>
 </ul>
